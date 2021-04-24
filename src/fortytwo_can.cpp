@@ -1,6 +1,6 @@
 
 
-#ifdef ARDUINO_ARCH_SAMC
+#ifdef ARDUINO_ARCH_SAMD
 
 #include "fortytwo_can.h"
 #include "Arduino.h"
@@ -25,6 +25,8 @@ FORTYTWO_CAN::FORTYTWO_CAN(uint8_t canid, uint8_t cantx, uint8_t canrx, uint8_t 
 };
 
 uint8_t FORTYTWO_CAN::begin(uint8_t idmode, uint32_t speedset, uint8_t clockset) {
+    SerialUSB.println("Testing");
+
     uint8_t ret;
     _idmode = idmode;
     
@@ -32,7 +34,7 @@ uint8_t FORTYTWO_CAN::begin(uint8_t idmode, uint32_t speedset, uint8_t clockset)
         return CAN_FAIL;
     }
 
-    const struct can_config config = {
+    const struct mcan_config config = {
         id: _canid,
         
         regs: ((_canid == ID_CAN0) ? CAN0 : CAN1),
@@ -77,39 +79,40 @@ uint8_t FORTYTWO_CAN::begin(uint8_t idmode, uint32_t speedset, uint8_t clockset)
 
     PORT->Group[_txgroup].DIRSET.reg = (1 << _cantx);
     PORT->Group[_rxgroup].DIRCLR.reg = (1 << _canrx);
-    PORT->Group[_txgroup].PINCFG[_cantx].reg = PORT_PINCFG_PMUXEN;
+    PORT->Group[_txgroup].PINCFG[_cantx].reg = PORT_PINCFG_INEN | PORT_PINCFG_PMUXEN;
     PORT->Group[_rxgroup].PINCFG[_canrx].reg = PORT_PINCFG_INEN | PORT_PINCFG_PMUXEN;
 
-    PORT->Group[_txgroup].PMUX[_cantx / 2].reg = PORT_PMUX_PMUXE(6 /* CAN0 G */);
-    PORT->Group[_rxgroup].PMUX[_canrx / 2].reg = PORT_PMUX_PMUXO(6 /* CAN0 G */);
+    PORT->Group[_rxgroup].PMUX[_canrx / 2].reg = PORT_PMUX_PMUXO(6 /* CAN0 G */) | PORT_PMUX_PMUXE(6 /* CAN0 G */); // TODO FIX
+    PORT->Group[_txgroup].PMUX[_cantx / 2].reg = PORT_PMUX_PMUXE(6 /* CAN0 G */) | PORT_PMUX_PMUXO(6 /* CAN0 G */);
 
     switch (config.id) {
         case ID_CAN0:
             GCLK->PCHCTRL[CAN0_GCLK_ID].reg = GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN_GCLK0;
             MCLK->AHBMASK.reg |= MCLK_AHBMASK_CAN0;
-            //NVIC_EnableIRQ(CAN0_IRQn);
+            NVIC_EnableIRQ(CAN0_IRQn);
             break;
         case ID_CAN1:
             GCLK->PCHCTRL[CAN1_GCLK_ID].reg = GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN_GCLK0;
             MCLK->AHBMASK.reg |= MCLK_AHBMASK_CAN1;
-            //NVIC_EnableIRQ(CAN0_IRQn);
+            NVIC_EnableIRQ(CAN1_IRQn);
             break;
         default:
             break;
     }
 
-    if (mcan_configure_msg_ram(&mcan_cfg, &mcan_msg_ram_size)) {
-        Serial.println("RAM configuration succeeded");
+    if (mcan_configure_msg_ram(&config, &mcan_msg_ram_size)) {
+        SerialUSB.println("RAM configuration succeeded");
     } else {
+        SerialUSB.println("Failed");
         return CAN_FAIL;
     }
 
-    ret = mcan_initialize(&mcan, &mcan_cfg);
+    ret = mcan_initialize(&mcan, &config);
     if (ret == 0) {
-        Serial.println("CAN initialized");
+        SerialUSB.println("CAN initialized");
     } else {
-        Serial.print("CAN init failed, code ");
-        Serial.println(ret);
+        SerialUSB.print("CAN init failed, code ");
+        SerialUSB.println(ret);
         return CAN_FAIL;
     }
 
@@ -124,22 +127,22 @@ uint8_t FORTYTWO_CAN::begin(uint8_t idmode, uint32_t speedset, uint8_t clockset)
     mcan_enable(&mcan);
 
     // Enable chip standby
-    pinMode(_cs, OUTPUT);
-    digitalWrite(_cs, LOW);
-    //mcan_enable_rx_array_flag(&mcan, 0);
+    // pinMode(_cs, OUTPUT);
+    // digitalWrite(_cs, LOW);
+    mcan_enable_rx_array_flag(&mcan, 0);
 
     // MCP_ANY means filters don't matter
     if (_idmode == MCP_ANY) {
-        init_Mask(FILTER_0, (CAN_EXT_MSG_ID | MSG_ID_ALLOW_ALL_MASK));
-        init_Mask(FILTER_1, (CAN_STD_MSG_ID | MSG_ID_ALLOW_ALL_MASK));
+        initMask(FILTER_0, (CAN_EXT_MSG_ID | MSG_ID_ALLOW_ALL_MASK));
+        initMask(FILTER_1, (CAN_STD_MSG_ID | MSG_ID_ALLOW_ALL_MASK));
     }
 
     if (mcan_is_enabled(&mcan)) {
-        Serial.println("MCAN is enabled!");
+        SerialUSB.println("MCAN is enabled!");
         return CAN_OK;
     }
 
-    Serial.println("Something went wrong!!!!!!!!");
+    SerialUSB.println("Something went wrong!!!!!!!!");
 
     return CAN_FAIL;
 };
@@ -196,7 +199,7 @@ uint8_t FORTYTWO_CAN::initFilt(uint8_t num, uint8_t ext, uint32_t ulData)
 // Initilize Filter(s)
 uint8_t FORTYTWO_CAN::initFilt(uint8_t num, uint32_t ulData)
 {
-    return init_Filt(num, ((ulData & CAN_EXT_MSG_ID) == CAN_EXT_MSG_ID), ulData);
+    return initFilt(num, ((ulData & CAN_EXT_MSG_ID) == CAN_EXT_MSG_ID), ulData);
 }; 
 
 // Set operational mode
@@ -312,25 +315,24 @@ uint8_t FORTYTWO_CAN::disOneShotTX(void)
     return 0;
 };                                           
 
-/*
+
 void CAN0_Handler(void)
 {
-    Serial.println("A");
-    if (mcan_rx_array_data(&(use_object->mcan))) {
-        mcan_clear_rx_array_flag(&(use_object->mcan));
-        use_object->rx_ded_buffer_data = true;
+    SerialUSB.println("A");
+    if (mcan_rx_array_data(&(fortytwo_can_objects[0]->mcan))) {
+        mcan_clear_rx_array_flag(&(fortytwo_can_objects[0]->mcan));
+        fortytwo_can_objects[0]->rx_ded_buffer_data = true;
         Serial.println("Got a Packet 0!");
     }
 }
 void CAN1_Handler(void)
 {
-    Serial.println("B");
-    if (mcan_rx_array_data(&(use_object->mcan))) {
-        mcan_clear_rx_array_flag(&(use_object->mcan));
-        use_object->rx_ded_buffer_data = true;
+    SerialUSB.println("B");
+    if (mcan_rx_array_data(&(fortytwo_can_objects[1]->mcan))) {
+        mcan_clear_rx_array_flag(&(fortytwo_can_objects[1]->mcan));
+        fortytwo_can_objects[1]->rx_ded_buffer_data = true;
         Serial.println("Got a Packet 1!");
     }
 }
-*/
 
 #endif

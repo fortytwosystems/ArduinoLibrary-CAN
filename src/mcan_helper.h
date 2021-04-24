@@ -1,4 +1,4 @@
-#ifdef ARDUINO_ARCH_SAMC
+#ifdef ARDUINO_ARCH_SAMD
 #ifndef MCAN_HELPER_H_
 #define MCAN_HELPER_H_
 /*

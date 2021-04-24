@@ -42,7 +42,7 @@
  *@{*/
 
 
-#ifdef ARDUINO_ARCH_SAMC
+#ifdef ARDUINO_ARCH_SAMD
 
 /*----------------------------------------------------------------------------
  *        Headers

@@ -23,7 +23,7 @@
   1301  USA
 */
 
-#ifdef ARDUINO_ARCH_SAMC
+#ifdef ARDUINO_ARCH_SAMD
 #ifndef MCP2515DFS_H_
 #define MCP2515DFS_H_
 

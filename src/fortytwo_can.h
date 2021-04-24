@@ -1,5 +1,5 @@
 
-#ifdef ARDUINO_ARCH_SAMC
+#ifdef ARDUINO_ARCH_SAMD
 
 #ifndef FORTYTWO_CAN_H_
 #define FORTYTWO_CAN_H_
@@ -64,7 +64,7 @@ typedef struct {
 
 class FORTYTWO_CAN {
 public:
-    FORTYTWO_CAN(uint8_t canid, uint8_t cantx, uint8_t canrx, uint8_t group); // TODO: Add defaults
+    FORTYTWO_CAN(uint8_t canid, uint8_t cantx, uint8_t canrx, uint8_t txgroup, uint8_t rxgroup); // TODO: Add defaults
     uint8_t begin(uint8_t idmodeset, uint32_t speedset, uint8_t clockset);
     uint8_t initMask(uint8_t num, uint8_t ext, uint32_t ulData);              // Initilize Mask(s)
     uint8_t initMask(uint8_t num, uint32_t ulData);                          // Initilize Mask(s)
