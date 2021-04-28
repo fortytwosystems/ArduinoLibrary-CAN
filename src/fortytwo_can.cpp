@@ -1,21 +1,17 @@
 
-
 #ifdef ARDUINO_ARCH_SAMC
 
 #include "fortytwo_can.h"
 #include "Arduino.h"
+#include "wiring_private.h"
 
 FORTYTWO_CAN *fortytwo_can_objects[2];
 
-FORTYTWO_CAN::FORTYTWO_CAN(uint8_t canid, uint8_t cantx, uint8_t canrx, uint8_t txgroup, uint8_t rxgroup) 
+FORTYTWO_CAN::FORTYTWO_CAN(uint8_t canid, uint8_t pintx, uint8_t pinrx) 
     : _canid(canid) {
-    while(cantx > 31) cantx -= 32;
-    while(canrx > 31) canrx -= 32;
 
-    _cantx = cantx;
-    _canrx = canrx;
-    _txgroup = txgroup;
-    _rxgroup = rxgroup;
+    _pintx = pintx;
+    _pinrx = pinrx;
 
     if(_canid == ID_CAN0) {
         fortytwo_can_objects[0] = this;
@@ -24,7 +20,7 @@ FORTYTWO_CAN::FORTYTWO_CAN(uint8_t canid, uint8_t cantx, uint8_t canrx, uint8_t 
     }
 };
 
-uint8_t FORTYTWO_CAN::begin(uint8_t idmode, uint32_t speedset, uint8_t clockset) {
+uint8_t FORTYTWO_CAN::begin(uint8_t idmode, uint32_t speedset) {
     uint8_t ret;
     _idmode = idmode;
     
@@ -75,13 +71,18 @@ uint8_t FORTYTWO_CAN::begin(uint8_t idmode, uint32_t speedset, uint8_t clockset)
         quanta_sync_jump_fd : 3 + 1,
     };
 
-    PORT->Group[_txgroup].DIRSET.reg = (1 << _cantx);
-    PORT->Group[_rxgroup].DIRCLR.reg = (1 << _canrx);
-    PORT->Group[_txgroup].PINCFG[_cantx].reg = PORT_PINCFG_INEN | PORT_PINCFG_PMUXEN;
-    PORT->Group[_rxgroup].PINCFG[_canrx].reg = PORT_PINCFG_INEN | PORT_PINCFG_PMUXEN;
-
-    PORT->Group[_rxgroup].PMUX[_canrx / 2].reg = PORT_PMUX_PMUXO(6 /* CAN0 G */) | PORT_PMUX_PMUXE(6 /* CAN0 G */); // TODO FIX
-    PORT->Group[_txgroup].PMUX[_cantx / 2].reg = PORT_PMUX_PMUXE(6 /* CAN0 G */) | PORT_PMUX_PMUXO(6 /* CAN0 G */);
+    if((g_APinDescription[_pintx].ulPinAttribute >> PIO_COM & 0x1) || (g_APinDescription[_pintx].ulPinAttribute >> PIO_CAN & 0x1)) {
+        pinPeripheral(_pintx, PIO_COM);
+    }
+    else {
+        return CAN_FAILINIT;
+    }
+    if((g_APinDescription[_pinrx].ulPinAttribute >> PIO_COM & 0x1) || (g_APinDescription[_pinrx].ulPinAttribute >> PIO_CAN & 0x1)) {
+        pinPeripheral(_pinrx, PIO_COM);
+    }
+    else {
+        return CAN_FAILINIT;
+    }
 
     switch (config.id) {
         case ID_CAN0:
@@ -125,8 +126,6 @@ uint8_t FORTYTWO_CAN::begin(uint8_t idmode, uint32_t speedset, uint8_t clockset)
     mcan_enable(&mcan);
 
     // Enable chip standby
-    // pinMode(_cs, OUTPUT);
-    // digitalWrite(_cs, LOW);
     mcan_enable_rx_array_flag(&mcan, 0);
 
     // MCP_ANY means filters don't matter

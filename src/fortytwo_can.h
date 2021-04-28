@@ -64,8 +64,8 @@ typedef struct {
 
 class FORTYTWO_CAN {
 public:
-    FORTYTWO_CAN(uint8_t canid, uint8_t cantx, uint8_t canrx, uint8_t txgroup, uint8_t rxgroup); // TODO: Add defaults
-    uint8_t begin(uint8_t idmodeset, uint32_t speedset, uint8_t clockset);
+    FORTYTWO_CAN(uint8_t canid, uint8_t pintx, uint8_t pinrx);
+    uint8_t begin(uint8_t idmodeset, uint32_t speedset);
     uint8_t initMask(uint8_t num, uint8_t ext, uint32_t ulData);              // Initilize Mask(s)
     uint8_t initMask(uint8_t num, uint32_t ulData);                          // Initilize Mask(s)
     uint8_t initFilt(uint8_t num, uint8_t ext, uint32_t ulData);              // Initilize Filter(s)
@@ -86,10 +86,8 @@ public:
     struct mcan_set mcan;
     volatile bool rx_ded_buffer_data;
 private:
-    uint8_t _canrx;
-    uint8_t _cantx;
-    uint8_t _txgroup;
-    uint8_t _rxgroup;
+    uint8_t _pinrx;
+    uint8_t _pintx;
     uint8_t _canid;
     uint8_t _idmode;
 
