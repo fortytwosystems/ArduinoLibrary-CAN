@@ -43,7 +43,7 @@
  * Interface for configuring and using the MCAN peripheral.
  */
 
-#ifdef ARDUINO_ARCH_SAMD
+#ifdef ARDUINO_ARCH_SAMC
 
 #ifndef MCAN_H_
 #define MCAN_H_

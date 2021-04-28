@@ -1,6 +1,6 @@
 
 
-#ifdef ARDUINO_ARCH_SAMD
+#ifdef ARDUINO_ARCH_SAMC
 
 #include "fortytwo_can.h"
 #include "Arduino.h"
@@ -25,8 +25,6 @@ FORTYTWO_CAN::FORTYTWO_CAN(uint8_t canid, uint8_t cantx, uint8_t canrx, uint8_t 
 };
 
 uint8_t FORTYTWO_CAN::begin(uint8_t idmode, uint32_t speedset, uint8_t clockset) {
-    SerialUSB.println("Testing");
-
     uint8_t ret;
     _idmode = idmode;
     

@@ -1,5 +1,5 @@
 
-#ifdef ARDUINO_ARCH_SAMD
+#ifdef ARDUINO_ARCH_SAMC
 
 #ifndef FORTYTWO_CAN_H_
 #define FORTYTWO_CAN_H_

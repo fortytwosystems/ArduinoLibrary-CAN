@@ -16,4 +16,4 @@ See ```examples``` folder
 Acknowledgements
 -----------------
 
-Much of the library was rewritten from https://github.com/hugllc/samc21_can, which in turn takes many pieces from https://github.com/coryjfowler/MCP_CAN_lib.
+Rewritten from https://github.com/hugllc/samc21_can, which is developed from https://github.com/coryjfowler/MCP_CAN_lib.
